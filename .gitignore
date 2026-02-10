@@ -1,2 +1,4 @@
 /target
 dump.rdb
+examples/get-test/target
+*.component.wasm

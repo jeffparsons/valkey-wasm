@@ -1,0 +1,31 @@
+package valkey:scripting@0.1.0;
+
+interface types {
+    variant value {
+        nil,
+        ok(string),
+        error(string),
+        int(s64),
+        bytes(list<u8>),
+    }
+}
+
+interface server-read-only {
+    record args {
+        keys: list<string>,
+        argv: list<string>,
+    }
+
+    get-args: func() -> args;
+    mget: func(keys: list<string>) -> list<option<list<u8>>>;
+}
+
+interface script {
+    use types.{value};
+    run: func() -> value;
+}
+
+world read-only {
+    import server-read-only;
+    export script;
+}

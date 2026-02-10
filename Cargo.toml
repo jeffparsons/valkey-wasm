@@ -1,0 +1,11 @@
+[package]
+name = "valkey-wasm"
+edition = "2024"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+name = "valkey_wasm"
+
+[dependencies]
+valkey-module = "0.1.10"

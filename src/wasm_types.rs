@@ -31,7 +31,7 @@ impl fmt::Debug for Sha256Digest {
     }
 }
 
-/// Internal error type for Wasm compilation and caching.
+/// Internal error type for Wasm compilation, caching, and execution.
 /// Not directly exposed to Valkey clients; command handlers
 /// map these to user-facing error strings.
 pub enum WasmError {
@@ -40,6 +40,10 @@ pub enum WasmError {
         max_entries: usize,
         current: usize,
     },
+    FuelExhausted,
+    EpochDeadlineExceeded,
+    ExecutionTrapped(wasmtime::Trap),
+    ExecutionFailed(anyhow::Error),
 }
 
 impl fmt::Display for WasmError {
@@ -53,6 +57,10 @@ impl fmt::Display for WasmError {
                 f,
                 "component cache full ({current}/{max_entries} entries)"
             ),
+            WasmError::FuelExhausted => write!(f, "fuel exhausted"),
+            WasmError::EpochDeadlineExceeded => write!(f, "epoch deadline exceeded"),
+            WasmError::ExecutionTrapped(trap) => write!(f, "execution trapped: {trap}"),
+            WasmError::ExecutionFailed(e) => write!(f, "execution failed: {e}"),
         }
     }
 }
@@ -60,6 +68,16 @@ impl fmt::Display for WasmError {
 impl fmt::Debug for WasmError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
+    }
+}
+
+/// Classifies a Wasmtime execution error into a `WasmError`.
+pub fn classify_execution_error(err: anyhow::Error) -> WasmError {
+    match err.downcast_ref::<wasmtime::Trap>() {
+        Some(&wasmtime::Trap::OutOfFuel) => WasmError::FuelExhausted,
+        Some(&wasmtime::Trap::Interrupt) => WasmError::EpochDeadlineExceeded,
+        Some(&trap) => WasmError::ExecutionTrapped(trap),
+        None => WasmError::ExecutionFailed(err),
     }
 }
 
@@ -93,5 +111,58 @@ mod tests {
         let c = Sha256Digest::of(b"xyz");
         assert_eq!(a, b);
         assert_ne!(a, c);
+    }
+
+    #[test]
+    fn classify_out_of_fuel() {
+        let err: anyhow::Error = wasmtime::Trap::OutOfFuel.into();
+        assert!(matches!(
+            classify_execution_error(err),
+            WasmError::FuelExhausted
+        ));
+    }
+
+    #[test]
+    fn classify_interrupt() {
+        let err: anyhow::Error = wasmtime::Trap::Interrupt.into();
+        assert!(matches!(
+            classify_execution_error(err),
+            WasmError::EpochDeadlineExceeded
+        ));
+    }
+
+    #[test]
+    fn classify_stack_overflow() {
+        let err: anyhow::Error = wasmtime::Trap::StackOverflow.into();
+        match classify_execution_error(err) {
+            WasmError::ExecutionTrapped(trap) => {
+                assert_eq!(trap, wasmtime::Trap::StackOverflow);
+            }
+            other => panic!("expected ExecutionTrapped, got {other}"),
+        }
+    }
+
+    #[test]
+    fn classify_non_trap_error() {
+        let err = anyhow::anyhow!("some other error");
+        assert!(matches!(
+            classify_execution_error(err),
+            WasmError::ExecutionFailed(_)
+        ));
+    }
+
+    #[test]
+    fn display_variants() {
+        let cases: Vec<(WasmError, &str)> = vec![
+            (WasmError::FuelExhausted, "fuel exhausted"),
+            (WasmError::EpochDeadlineExceeded, "epoch deadline exceeded"),
+            (
+                WasmError::ExecutionTrapped(wasmtime::Trap::StackOverflow),
+                "execution trapped: wasm trap: call stack exhausted",
+            ),
+        ];
+        for (err, expected) in cases {
+            assert_eq!(err.to_string(), expected);
+        }
     }
 }

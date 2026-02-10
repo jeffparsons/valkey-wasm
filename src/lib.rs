@@ -1,3 +1,7 @@
+mod cache;
+mod engine;
+mod wasm_types;
+
 use valkey_module::alloc::ValkeyAlloc;
 use valkey_module::{valkey_module, Context, ValkeyError, ValkeyResult, ValkeyString};
 

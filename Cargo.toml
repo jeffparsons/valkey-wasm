@@ -9,3 +9,10 @@ name = "valkey_wasm"
 
 [dependencies]
 valkey-module = "0.1.10"
+wasmtime = { version = "41", default-features = false, features = ["component-model", "cranelift", "runtime"] }
+anyhow = "1"
+sha2 = "0.10"
+
+[features]
+# Use the system allocator instead of Valkey's allocator in tests.
+enable-system-alloc = ["valkey-module/enable-system-alloc"]

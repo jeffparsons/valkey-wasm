@@ -1,4 +1,5 @@
 /target
 dump.rdb
-examples/get-test/target
+examples/*/target
+examples/*/Cargo.lock
 examples/**/*.component.wasm

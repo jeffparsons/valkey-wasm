@@ -18,7 +18,7 @@ impl exports::valkey::scripting::script::Guest for Component {
         use valkey::scripting::server_read_only;
         use valkey::scripting::types::Value;
 
-        let results = server_read_only::mget(&[alloc::string::String::from("test")]);
+        let results = server_read_only::mget(&[b"test".to_vec()]);
         match results.first() {
             Some(Some(bytes)) => Value::Bytes(bytes.clone()),
             _ => Value::Nil,

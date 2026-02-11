@@ -1,3 +1,4 @@
+mod bindings;
 mod cache;
 mod engine;
 mod store;

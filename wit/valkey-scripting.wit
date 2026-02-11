@@ -12,12 +12,12 @@ interface types {
 
 interface server-read-only {
     record args {
-        keys: list<string>,
-        argv: list<string>,
+        keys: list<list<u8>>,
+        argv: list<list<u8>>,
     }
 
     get-args: func() -> args;
-    mget: func(keys: list<string>) -> list<option<list<u8>>>;
+    mget: func(keys: list<list<u8>>) -> list<option<list<u8>>>;
 }
 
 interface script {

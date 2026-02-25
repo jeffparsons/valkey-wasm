@@ -1,6 +1,7 @@
 mod bindings;
 mod cache;
 mod engine;
+mod scripting_engine;
 mod store;
 mod wasm_types;
 
@@ -16,9 +17,16 @@ fn wasm_ping(_ctx: &Context, args: Vec<ValkeyString>) -> ValkeyResult {
     Ok("PONG".into())
 }
 
-fn wasm_init(_ctx: &Context, _args: &[ValkeyString]) -> Status {
+fn wasm_init(ctx: &Context, _args: &[ValkeyString]) -> Status {
     engine::start_epoch_ticker();
+    if scripting_engine::register(ctx) == Status::Err {
+        return Status::Err;
+    }
     Status::Ok
+}
+
+fn wasm_deinit(ctx: &Context) -> Status {
+    scripting_engine::unregister(ctx)
 }
 
 valkey_module! {
@@ -28,6 +36,7 @@ valkey_module! {
     allocator: (ValkeyAlloc, ValkeyAlloc),
     data_types: [],
     init: wasm_init,
+    deinit: wasm_deinit,
     commands: [
         ["wasm.ping", wasm_ping, "readonly", 0, 0, 0],
     ],
